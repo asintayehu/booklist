@@ -8,10 +8,29 @@
     <h1>Your Library</h1>
 
     <div class="book-table">
+        <table>
+            <tr>
+                <td>Book Title</td>
+                <td>Author</td>
+                <td>Genre</td>
+                <td>Rating</td>
+                <td>Date Started</td>
+            <tr>
+                {% for book in book_list %}
+                    <tr>
+                        <td>{{ book.title }}</td>
+                        <td>{{ book.date_created.date() }}</td>
+                    </tr>
+                {% endfor %}
+        </table>
     </div>
     
-    <div class="book-input" method="POST">
-        <form type="text" action="" id="add-book" name="add-book-name"></form>
+    <div class="form">
+        <form method="POST">
+            <input type="text" name="book">
+            <button type="submit">submit</button>
+        </form>
     </div>
+
 </div>
 {% endblock %}
