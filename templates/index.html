@@ -10,24 +10,38 @@
     <div class="book-table">
         <table>
             <tr>
-                <td>Book Title</td>
+                <!-- <td>Book Title</td>
                 <td>Author</td>
                 <td>Genre</td>
                 <td>Rating</td>
-                <td>Date Started</td>
+                <td>Date Started</td> -->
             <tr>
-                {% for book in book_list %}
-                    <tr>
-                        <td>{{ book.title }}</td>
-                        <td>{{ book.date_created.date() }}</td>
-                    </tr>
-                {% endfor %}
+            
+            <tr>
+                    {% for book, number in packed: %}
+                        {%if loop.index is divisibleby 4%}
+            </tr>
+            <tr>
+                        {%endif%}
+                        <td> Book Title: {{ book.title }} <br> 
+                             Date Started: {{ book.date_created.date() }} <br>
+
+                            <form action="/delete/{{book.id}}" method="POST" style="display:inline;">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit">
+                                    Delete Book
+                                </button>
+                            </form>
+
+                        </td>
+                    {% endfor %}
+            </tr>
         </table>
     </div>
     
     <div class="form">
         <form method="POST">
-            <input type="text" name="book">
+            <input type="text"  placeholder="book title"  name="book">
             <button type="submit">submit</button>
         </form>
     </div>

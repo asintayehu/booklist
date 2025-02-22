@@ -3,9 +3,10 @@ h1{
     text-align: center;
 }
 
-table, tr, td{
+td{
     border: solid;
     border-collapse: collapse;
+    padding: 15px;
 }
 
 table {
