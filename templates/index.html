@@ -9,27 +9,33 @@
 
     <div class="book-table">
         <table>
+            {% set count = 0 %}
             <tr>
-                <!-- <td>Book Title</td>
-                <td>Author</td>
-                <td>Genre</td>
-                <td>Rating</td>
-                <td>Date Started</td> -->
+
             <tr>
-            
             <tr>
                     {% for book, number in packed: %}
-                        {%if loop.index is divisibleby 4%}
-            </tr>
-            <tr>
+
+                        {%if (book.id-1) % 3 == 0 %}
+                            </tr> <tr>
                         {%endif%}
+
                         <td> Book Title: {{ book.title }} <br> 
                              Date Started: {{ book.date_created.date() }} <br>
+                             Author: {{ book.author }} <br>
+                             Genre: {{ book.genre }} <br>
+                             Rating: {{ book.rating }} <br>
 
                             <form action="/delete/{{book.id}}" method="POST" style="display:inline;">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit">
                                     Delete Book
+                                </button>
+                            </form>
+
+                            <form action="/add-notes/{{book.id}}">
+                                <button type="submit">
+                                    Update Book
                                 </button>
                             </form>
 
@@ -41,8 +47,20 @@
     
     <div class="form">
         <form method="POST">
-            <input type="text"  placeholder="book title"  name="book">
-            <button type="submit">submit</button>
+
+            <input type="text"  placeholder="book title"  name="book" required> <br>
+            <input type="text" placeholder="author name" name="author" required> <br>
+            <input type="text"  placeholder="genre"  name="genre" required> <br>
+
+            <select name="rating">
+                <option value="1">1 star</option>
+                <option value="2">2 star</option>
+                <option value="3">3 star</option>
+                <option value="4">4 star</option>
+                <option value="5">5 star</option>
+            </select>
+
+            <button type="submit"> submit book </button>
         </form>
     </div>
 

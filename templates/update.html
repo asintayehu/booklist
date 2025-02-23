@@ -1,0 +1,27 @@
+{% extends 'base.html'%}
+
+{% block head %}
+{% endblock %}
+
+{% block body %}
+    <h1>This is the update page for book {{id}}</h1>
+    <br>
+
+    <h2>Author name: {{ book.author }} </h2>
+    <h2>Book name: {{ book.title }} </h2>
+    <h2>Date started: {{ book.date_created.date() }} </h2>
+
+    <form method="POST">
+        <h3>Current Rating: {{ book.rating}} stars </h3>
+        <h3>Change Rating:</h3>
+        <select name="rating">
+            <option value="1">1 star</option>
+            <option value="2">2 star</option>
+            <option value="3">3 star</option>
+            <option value="4">4 star</option>
+            <option value="5">5 star</option>
+        </select>
+
+        <button type="submit">Submit Rating</button>
+    </form>
+{% endblock %}

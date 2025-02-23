@@ -1,6 +1,7 @@
 # Core dependencies
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import CheckConstraint
 from datetime import *
 from sqlalchemy.orm import DeclarativeBase
 from flask_migrate import Migrate
@@ -21,6 +22,11 @@ class Book(db.Model):
     author = db.Column(db.String(100), nullable=False, default="")
     genre = db.Column(db.String(100), nullable=True, default="")
     date_created = db.Column(db.DateTime, default= lambda : datetime.now(timezone.utc))
+    rating = db.Column(db.Double, nullable=False)
+
+    __table_args__ = (
+        db.CheckConstraint('rating BETWEEN 1 AND 5', name='rating_range'),
+    )
 
     def __repr__(self):
         return '<Book %r>' % self.id
@@ -32,16 +38,19 @@ def index():
     if request.method == 'POST':
         # Creation of books
         book_title = request.form.get('book')
-        new_book = Book(title=book_title)
+        book_author = request.form.get('author')
+        book_genre = request.form.get('genre')
+        book_rating = request.form.get('rating')
+        new_book = Book(title=book_title, author=book_author, genre=book_genre, rating=book_rating)
 
-        # String parser
-        cleaned_title = new_book.title.replace(" ", "+").lower()
-        # convert to lower case and replace all spaces with a +
+        # # String parser
+        # cleaned_title = new_book.title.replace(" ", "+").lower()
+        # # convert to lower case and replace all spaces with a +
 
 
-        url = f'https://openlibrary.org/search.json?q={cleaned_title}'
-        book_request = rq.get(url)
-        print(book_request.json())
+        # url = f'https://openlibrary.org/search.json?q={cleaned_title}'
+        # book_request = rq.get(url)
+        # print(book_request.json())
         
 
         try:
@@ -74,7 +83,24 @@ def delete(id):
     else:
         return redirect('/')
 
+@app.route('/add-notes/<int:id>', methods=['GET', 'POST'])
+def update(id):
+    
+    book = db.get_or_404(Book, id)
+    if request.method == 'POST':
+        # Query database and then grab all elements by ID
+        # Want to be able to edit date started and rating
+        book.rating = request.form.get('rating')
+    else:
+        return render_template('update.html', id=id, book=book)
+
+    try:
+        db.session.commit()
+        return redirect('/')
+    except Exception as e:
+        return f'{str(e)}'
+
+
 
 if __name__ == "__main__":
-
     app.run(debug=True)
