@@ -1,0 +1,17 @@
+{% extends 'base.html'%}
+
+{% block head %}
+{% endblock %}
+
+{% block body %}
+<h1>Login Page</h1>
+<h2>Don't have an account? Register <a href="{{url_for('register')}}"">here</a></h2>
+     
+<div class="form">
+ <form>
+    {{ form.user_name }}
+    {{ form.password }}
+    {{ form.submit }}
+ </form>
+</div>
+{% endblock %}
