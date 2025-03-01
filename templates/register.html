@@ -6,13 +6,22 @@
 {% block body %}
 <h1>Registration Page</h1>
 <h2>Already have an account? Login <a href="{{url_for('login')}}"">here</a></h2>
-     
-<div class="form">
-    <form method="POST" action="{{ url_for('register') }}">
-        {{ form.hidden_tag() }}
-        <div>{{ form.user_name.label }} {{ form.user_name() }}</div>
-        <div>{{ form.password.label }} {{ form.password() }}</div>
-        <div><button type="submit">Register</button></div>
-    </form>    
-</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul>
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% endwith %}
+
+<form method="POST" action="">
+    {{ form.hidden_tag() }}
+    {{ form.username }}
+    {{ form.password }}
+    {{ form.submit }}
+</form>
+
 {% endblock %}

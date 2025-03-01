@@ -1,29 +1,25 @@
 # Core dependencies
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import CheckConstraint
 from datetime import *
 from sqlalchemy.orm import DeclarativeBase
 from flask_migrate import Migrate
 import requests as rq
-from flask_login import LoginManager, UserMixin, login_user, LoginManager, login_required, logout_user, current_user
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import InputRequired, Length, ValidationError
-from flask_bcrypt import Bcrypt
 import secrets
+from wtforms import Form, BooleanField, StringField, validators, IntegerField, SubmitField, PasswordField, ValidationError
+import os
+from flask_wtf import FlaskForm
+from flask_login import LoginManager, UserMixin, login_user, current_user
 
 # Initializing app, database
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///bookie.db"
-app.config['SECRET_KEY'] = ''
-login_manager = LoginManager()
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
 migrate = Migrate(app, db)
-
+login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "login"
 
 # iterator list
 numbers = list(range(0,30))
@@ -31,14 +27,16 @@ numbers = list(range(0,30))
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    user_name = db.Column(db.String(20), nullable=False, unique=True)
+    user_name = db.Column(db.String(20), nullable=False)
     password = db.Column(db.String(30), nullable=False)
     bookshelf = db.relationship('Book', backref='User', lazy='dynamic')
 
-    # is_authenticated
-    # is_active
-    # is_anonymous
-    # get_id
+    @staticmethod
+    def authenticate(username, password):
+        user = User.query.filter_by(user_name=username).first()
+        if user and user.password == password:
+            return user
+        return None
 
     def __repr__(self):
         return '<Username: %s>' % self.id
@@ -60,33 +58,75 @@ class Book(db.Model):
     def __repr__(self):
         return '<Book %r>' % self.id
 
-class RegisterForm(FlaskForm):
-    user_name = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Username"})
-    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Password"})
+class RegistrationForm(FlaskForm):
+    # Enter username, password.
+    username = StringField('Username', validators=[validators.Length(min=6, max=20)])
+    password = PasswordField('Password', validators=[validators.Length(min=8,max=50)])
     submit = SubmitField("Register")
 
-    # Query database
-    def validate_name(self, user_name):
-        with app.app_context():
-            existing_name = User.query.filter_by(user_name=user_name.data).first()
-            if existing_name:
-                raise ValidationError ("User already exists")
-
-    # existing_name = User.query.filter_by(user_name=user_name.data).first()
-    # if existing_name:
-    #     raise ValidationError ("User already exists")
-    
 class LoginForm(FlaskForm):
-    user_name = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Username"})
-    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Password"})
+    # Enter username, password.
+    username = StringField('Username', validators=[validators.Length(min=6, max=20)])
+    password = PasswordField('Password', validators=[validators.Length(min=8,max=50)])
     submit = SubmitField("Login")
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# estbalish routes
-@app.route('/', methods=['GET', 'POST'])
+def url_has_allowed_host_and_scheme(url, host):
+    if not url:
+        return False
+    parsed_url = url_parse(url)
+    return parsed_url.scheme in ('http', 'https') and parsed_url.netloc == host
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if request.method == 'POST':
+        print("Received form data:", request.form)  # Debugging
+        print("Form validation:", form.validate_on_submit())  # Debugging
+        print("Form errors:", form.errors)  # Debugging
+    if form.validate_on_submit():
+        user = User.authenticate(form.username.data, form.password.data)
+        if user:
+            login_user(user)
+            flash('Logged in successfully!')
+            next_page = request.form.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        flash('Invalid username or password', 'error')
+    return render_template('login.html', form=form)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm(request.form)
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        password = form.password.data
+
+        existing_name = User.query.filter_by(user_name=username).first()
+        if existing_name:
+            flash('Username already taken, please choose another one.', 'error')
+            return render_template('register.html', form=form)
+        else:
+            try:
+                user = User(user_name=username, password=password)
+                db.session.add(user)
+                db.session.commit()
+                flash('Registration successful!', 'success')
+                return redirect(url_for('login'))
+            except Exception as e:
+                db.session.rollback()
+                print("Error:", e)
+
+    return render_template('register.html', form=form)
+
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
+@app.route('/home', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         # Creation of books
@@ -94,31 +134,22 @@ def index():
         book_author = request.form.get('author')
         book_genre = request.form.get('genre')
         book_rating = request.form.get('rating')
-        new_book = Book(title=book_title, author=book_author, genre=book_genre, rating=book_rating)
-
-        # # String parser
-        # cleaned_title = new_book.title.replace(" ", "+").lower()
-        # # convert to lower case and replace all spaces with a +
-
-
-        # url = f'https://openlibrary.org/search.json?q={cleaned_title}'
-        # book_request = rq.get(url)
-        # print(book_request.json())
-        
+        owner_id= current_user.id
+        username = User.query.filter_by(id=owner_id).first().user_name
+        new_book = Book(title=book_title, author=book_author, genre=book_genre, rating=book_rating, owner_id=owner_id)
         try:
             db.session.add(new_book)
             db.session.commit()
-
             # Query the database
             Books = Book.query.order_by(Book.date_created).all()
             return redirect(url_for('index'))
         except Exception as e:
             return f'{str(e)}'
-
     else:
+        owner_id= current_user.id
+        username = User.query.filter_by(id=owner_id).first().user_name
         Books = Book.query.order_by(Book.date_created).all()
-        return render_template('index.html',   packed=zip(Books, numbers))
-
+        return render_template('index.html',   packed=zip(Books, numbers), username=username)
 
 @app.route('/delete/<int:id>', methods=['GET', 'POST'])
 def delete(id):
@@ -131,17 +162,15 @@ def delete(id):
             db.session.commit()
         except Exception as e:
             return f'{str(e)}'
-        return redirect('/')
+        return redirect(url_for('index'))
     else:
-        return redirect('/')
+        return redirect(url_for('index'))
 
 @app.route('/add-notes/<int:id>', methods=['GET', 'POST'])
 def update(id):
     
     book = db.get_or_404(Book, id)
     if request.method == 'POST':
-        # Query database and then grab all elements by ID
-        # Want to be able to edit date started and rating
         book.rating = request.form.get('rating')
     else:
         return render_template('update.html', id=id, book=book)
@@ -151,30 +180,6 @@ def update(id):
         return redirect('/')
     except Exception as e:
         return f'{str(e)}'
-    
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(user_name=form.user_name.data).first()
-        if user:
-            if bcrypt.check_password_hash(user.password, form.password.data):
-                login_user(user)
-                return redirect(url_for('index'))
-    return render_template('login.html', form=form)
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegisterForm()
-    if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data)
-        new_user = User(user_name=form.user_name.data, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form)
 
 if __name__ == "__main__":
     app.run(debug=True)

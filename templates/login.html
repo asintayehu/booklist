@@ -5,13 +5,21 @@
 
 {% block body %}
 <h1>Login Page</h1>
-<h2>Don't have an account? Register <a href="{{url_for('register')}}"">here</a></h2>
-     
-<div class="form">
- <form>
-    {{ form.user_name }}
+<h2>Don't have an account? Register <a href="{{ url_for('register') }}">here</a></h2>
+
+<form method="POST" action="">
+    {{ form.hidden_tag() }}
+    
+    <label for="username">{{ form.username.label }}</label>
+    {{ form.username }}
+
+    <label for="password">{{ form.password.label }}</label>
     {{ form.password }}
+
+    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+    
     {{ form.submit }}
- </form>
-</div>
+</form>
+
+
 {% endblock %}
