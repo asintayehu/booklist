@@ -6,6 +6,7 @@
 {% block body %}
 <div class="content">
     <h1>{{ username }}'s Library</h1>
+    <h3>Currently logged in as {{ username }}. Don't like that? Log out <a href="{{url_for('logout')}}">here!</a> </h3>
 
     <div class="book-table">
         <table>

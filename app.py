@@ -10,7 +10,7 @@ import secrets
 from wtforms import Form, BooleanField, StringField, validators, IntegerField, SubmitField, PasswordField, ValidationError
 import os
 from flask_wtf import FlaskForm
-from flask_login import LoginManager, UserMixin, login_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user
 
 # Initializing app, database
 app = Flask(__name__)
@@ -150,6 +150,11 @@ def index():
         username = User.query.filter_by(id=owner_id).first().user_name
         Books = Book.query.order_by(Book.date_created).all()
         return render_template('index.html',   packed=zip(Books, numbers), username=username)
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect("/")
 
 @app.route('/delete/<int:id>', methods=['GET', 'POST'])
 def delete(id):
