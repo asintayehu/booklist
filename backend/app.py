@@ -1,22 +1,39 @@
-# Core dependencies
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint
+"""
+Things to change:
+    - turn this backend into an api, no more render_template()
+"""
+
+# standard library imports
 from datetime import *
-from sqlalchemy.orm import DeclarativeBase
-from flask_migrate import Migrate
 import requests as rq
 import secrets
-from wtforms import Form, BooleanField, StringField, validators, IntegerField, SubmitField, PasswordField, ValidationError
 import os
+import time
+
+# web routing imports
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask_migrate import Migrate
+from flask_cors import CORS
+
+# imports for database
+from sqlalchemy import CheckConstraint
+from sqlalchemy.orm import DeclarativeBase
+from flask_sqlalchemy import SQLAlchemy
+
+# client side form library imports
+from wtforms import Form, BooleanField, StringField, validators, IntegerField, SubmitField, PasswordField, ValidationError
 from flask_wtf import FlaskForm
 from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user
 
+
 # Initializing app, database
 app = Flask(__name__)
+CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///bookie.db"
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 db = SQLAlchemy(app)
+
+
 migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -24,6 +41,7 @@ login_manager.init_app(app)
 # iterator list
 numbers = list(range(0,30))
 
+# Database classes
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +59,6 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<Username: %s>' % self.id
 
-
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
@@ -58,6 +75,7 @@ class Book(db.Model):
     def __repr__(self):
         return '<Book %r>' % self.id
 
+# Flask-Login Classes
 class RegistrationForm(FlaskForm):
     # Enter username, password.
     username = StringField('Username', validators=[validators.Length(min=6, max=20)])
@@ -70,6 +88,7 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[validators.Length(min=8,max=50)])
     submit = SubmitField("Login")
 
+# Flask Login Methods
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -80,14 +99,14 @@ def url_has_allowed_host_and_scheme(url, host):
     parsed_url = url_parse(url)
     return parsed_url.scheme in ('http', 'https') and parsed_url.netloc == host
 
+@app.route('/time')
+def get_current_time():
+    return {'time': time.time()}
 
+# Login page routing
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-    if request.method == 'POST':
-        print("Received form data:", request.form)  # Debugging
-        print("Form validation:", form.validate_on_submit())  # Debugging
-        print("Form errors:", form.errors)  # Debugging
     if form.validate_on_submit():
         user = User.authenticate(form.username.data, form.password.data)
         if user:
@@ -98,6 +117,7 @@ def login():
         flash('Invalid username or password', 'error')
     return render_template('login.html', form=form)
 
+# Register page routing
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm(request.form)
@@ -122,9 +142,15 @@ def register():
 
     return render_template('register.html', form=form)
 
+# Home page routing
 @app.route('/')
 def home():
     return redirect(url_for('login'))
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect("/")
 
 @app.route('/home', methods=['GET', 'POST'])
 def index():
@@ -151,11 +177,6 @@ def index():
         Books = Book.query.order_by(Book.date_created).all()
         return render_template('index.html',   packed=zip(Books, numbers), username=username)
 
-@app.route("/logout")
-def logout():
-    logout_user()
-    return redirect("/")
-
 @app.route('/delete/<int:id>', methods=['GET', 'POST'])
 def delete(id):
     if request.method == 'POST':
@@ -180,7 +201,7 @@ def update(id):
     else:
         return render_template('update.html', id=id, book=book)
 
-    try:
+    try:     
         db.session.commit()
         return redirect('/')
     except Exception as e:
